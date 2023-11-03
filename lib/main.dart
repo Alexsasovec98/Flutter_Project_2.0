@@ -219,18 +219,23 @@ class _Page1State extends State<Page1> {
       body: Container(
         color: Color(0xFF1F2732),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Container(
               padding: EdgeInsets.all(16),
               child: Column(
                 children: [
+                  Image.asset(
+                    'assets/logo.png', // Change to the actual path of your logo image
+                    height: 100, // Adjust the height as needed
+                  ),
+                  SizedBox(height: 16),
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Search Term',
+                      labelText: 'Search',
                       labelStyle: TextStyle(color: Colors.white),
                       enabledBorder: customBorder,
-                      focusedBorder: customBorder, // Use the same border for active and inactive states
+                      focusedBorder: customBorder,
                     ),
                     initialValue: data.searchText,
                     style: TextStyle(color: Colors.white),
