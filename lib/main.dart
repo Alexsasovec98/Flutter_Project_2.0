@@ -25,14 +25,20 @@ class Page1Data extends ChangeNotifier {
 }
 
 void main() => runApp(
-  MultiProvider(
-    providers: [
-      ChangeNotifierProvider(create: (_) => Page2Data()),
-      // Add other providers if needed
-    ],
-    child: MyApp(),
-  ),
-);
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<Page1Data>(
+            create: (context) => Page1Data(),
+          ),
+          ChangeNotifierProvider<Page2Data>(
+            create: (context) => Page2Data(),
+          ),
+          // Add other providers if needed
+        ],
+        child: MyApp(),
+      ),
+    );
+
 
 class MyApp extends StatelessWidget {
   @override
