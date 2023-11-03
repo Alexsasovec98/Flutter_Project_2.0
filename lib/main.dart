@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class Page1Data extends ChangeNotifier {
   String searchText = '';
@@ -23,11 +25,14 @@ class Page1Data extends ChangeNotifier {
 }
 
 void main() => runApp(
-      ChangeNotifierProvider<Page1Data>(
-        create: (context) => Page1Data(),
-        child: MyApp(),
-      ),
-    );
+  MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => Page2Data()),
+      // Add other providers if needed
+    ],
+    child: MyApp(),
+  ),
+);
 
 class MyApp extends StatelessWidget {
   @override
@@ -42,20 +47,152 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class Page2Data extends ChangeNotifier {
+  Map<String, String> favoritedUrls = {};
+
+  void updateStarState(String slug, bool isFilled, String imageUrl) {
+    favoritedUrls[slug] = isFilled ? imageUrl : ''; // Save or remove the imageUrl based on star state
+    notifyListeners();
+  }
+
+  List<String> getFavoritedUrls() {
+    return favoritedUrls.values.where((url) => url.isNotEmpty).toList();
+  }
+
+  String getSlugForUrl(String imageUrl) {
+    // Implement the logic to retrieve the slug for the given imageUrl
+    // This might involve iterating through the favoritedUrls and finding a match
+    // You can replace the example logic below with your actual implementation
+    for (var entry in favoritedUrls.entries) {
+      if (entry.value == imageUrl) {
+        return entry.key;
+      }
+    }
+    return ''; // Return an appropriate default value if no match is found
+  }
+}
+
+
+
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  List<String> webpUrls = [];
+  List<Map<String, dynamic>> data = []; // Declare data as a class variable
+
+  @override
+  void initState() {
+    super.initState();
+    // Call your API request method when the widget is being initialized
+    fetchData();
+  }
+
+  Future<void> fetchData() async {
+    final response = await http.get(Uri.parse(
+        'https://api.giphy.com/v1/gifs/trending?api_key=ZjFSjY5rgEywpQ5WUsqJtKQHtAUlzCIx&limit=10'));
+
+    if (response.statusCode == 200) {
+      // Successful API call
+      final apiData = json.decode(response.body)['data'];
+
+      setState(() {
+        data = List<Map<String, dynamic>>.from(apiData); // Assign apiData to data
+        webpUrls = data
+            .map<String>((item) {
+              final originalWebpUrl = item['images']['original']['webp'].toString();
+              return originalWebpUrl;
+            })
+            .toList();
+      });
+    } else {
+      // Handle errors
+      setState(() {
+        webpUrls = ['Failed to load data. Error ${response.statusCode}'];
+      });
+    }
+  }
+
+  void _showImageDialog(String imageUrl, String slug) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Image.network(imageUrl),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MainLayout(
       title: 'Home Page',
-      body: Container(
-        color: Color(0xFF1F2732),
-        child: Center(
-          child: Text(
-            'Welcome to the Creative Design Example!',
-            style: TextStyle(fontSize: 24, color: Colors.white),
+      body: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsets.all(16.0),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 8.0,
+                mainAxisSpacing: 8.0,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (BuildContext context, int index) {
+                  return GestureDetector(
+                    onTap: () {
+                      _showImageDialog(webpUrls[index], data[index]['slug'].toString());
+                    },
+                    child: Stack(
+                      children: [
+                        Image.network(webpUrls[index]),
+                        Positioned(
+                          top: 8.0,
+                          right: 8.0,
+                          child: StarIcon(slug: data[index]['slug'].toString(), imageUrl: webpUrls[index]),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                childCount: webpUrls.length,
+              ),
+            ),
           ),
-        ),
+        ],
       ),
+    );
+  }
+}
+
+
+class StarIcon extends StatelessWidget {
+  final String slug;
+  final String imageUrl;
+
+  const StarIcon({required this.slug, required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<Page2Data>(
+      builder: (context, page2Data, _) {
+        // Perform a null check on favoritedUrls[slug]
+        final bool isStarred = page2Data.favoritedUrls[slug]?.isNotEmpty ?? false;
+
+        return GestureDetector(
+          onTap: () {
+            // Toggle the state of the star icon on click
+            page2Data.updateStarState(slug, !isStarred, imageUrl);
+          },
+          child: Icon(
+            isStarred ? Icons.star : Icons.star_border,
+            color: isStarred ? Colors.yellow : null,
+          ),
+        );
+      },
     );
   }
 }
@@ -198,15 +335,57 @@ class Page2 extends StatelessWidget {
   Widget build(BuildContext context) {
     return MainLayout(
       title: 'Page 2',
-      body: Container(
-        color: Color(0xFF1F2732),
-        child: Center(
-          child: Text(
-            'Creative Design for Page 2',
-            style: TextStyle(fontSize: 24, color: Colors.white),
-          ),
-        ),
-      )
+      body: Consumer<Page2Data>(
+        builder: (context, page2Data, _) {
+          List<String> webpUrls = page2Data.getFavoritedUrls();
+
+          return CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: EdgeInsets.all(16.0),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 8.0,
+                    mainAxisSpacing: 8.0,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (BuildContext context, int index) {
+                      return GestureDetector(
+                        onTap: () {
+                          _showImageDialog(context, webpUrls[index]);
+                        },
+                        child: Stack(
+                          children: [
+                            Image.network(webpUrls[index]),
+                            Positioned(
+                              top: 8.0,
+                              right: 8.0,
+                              child: StarIcon(slug: page2Data.getSlugForUrl(webpUrls[index]), imageUrl: webpUrls[index]),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    childCount: webpUrls.length,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showImageDialog(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Image.network(imageUrl),
+        );
+      },
     );
   }
 }
@@ -215,17 +394,16 @@ class Page3 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MainLayout(
-      title: 'Page 3',
-      body: Container(
-        color: Color(0xFF1F2732),
-        child: Center(
-          child: Text(
-            'Creative Design for Page 3',
-            style: TextStyle(fontSize: 24, color: Colors.white),
+        title: 'Page 3',
+        body: Container(
+          color: Color(0xFF1F2732),
+          child: Center(
+            child: Text(
+              'Creative Design for Page 3',
+              style: TextStyle(fontSize: 24, color: Colors.white),
+            ),
           ),
-        ),
-      )
-    );
+        ));
   }
 }
 
