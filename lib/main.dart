@@ -5,21 +5,21 @@ import 'package:http/http.dart' as http;
 
 class Page1Data extends ChangeNotifier {
   String searchText = '';
-  String dropdownOption1 = "Option 1";
-  String dropdownOption2 = "Option 1";
+  int limitOption = 5; // Default limit option
+  String ratingOption = 'g'; // Default rating option
 
   void updateSearchText(String text) {
     searchText = text;
     notifyListeners();
   }
 
-  void updateDropdownOption1(String option) {
-    dropdownOption1 = option;
+  void updateLimitOption(int limit) {
+    limitOption = limit;
     notifyListeners();
   }
 
-  void updateDropdownOption2(String option) {
-    dropdownOption2 = option;
+  void updateRatingOption(String rating) {
+    ratingOption = rating;
     notifyListeners();
   }
 }
@@ -33,7 +33,9 @@ void main() => runApp(
           ChangeNotifierProvider<Page2Data>(
             create: (context) => Page2Data(),
           ),
-          // Add other providers if needed
+          ChangeNotifierProvider<Page3Data>(
+            create: (context) => Page3Data(),
+          ),
         ],
         child: MyApp(),
       ),
@@ -78,6 +80,28 @@ class Page2Data extends ChangeNotifier {
   }
 }
 
+class Page3Data extends ChangeNotifier {
+  List<Page3History> searchHistory = [];
+
+  void updateHistory(Page3History history) {
+    searchHistory.add(history);
+    notifyListeners();
+  }
+}
+
+class Page3History {
+  final String searchText;
+  final int limitOption;  // Corrected variable name
+  final String ratingOption;  // Corrected variable name
+  List<String> webpUrls; // Updated to allow modification
+
+  Page3History({
+    required this.searchText,
+    required this.limitOption,
+    required this.ratingOption,
+    required this.webpUrls,
+  });
+}
 
 
 class HomeScreen extends StatefulWidget {
@@ -209,11 +233,14 @@ class Page1 extends StatefulWidget {
 }
 
 class _Page1State extends State<Page1> {
-  final List<String> dropdownOptions = ["Option 1", "Option 2", "Option 3", "Option 4"];
+  final List<int> limitOptions = [5, 10, 15, 20];
+  final List<String> ratingOptions = ['g', 'pg', 'pg-13', 'r'];
+  Future<List<String>>? giphyDataFuture;
 
   @override
   Widget build(BuildContext context) {
     Page1Data data = Provider.of<Page1Data>(context);
+    Page3Data page3Data = Provider.of<Page3Data>(context, listen: false);
 
     OutlineInputBorder customBorder = OutlineInputBorder(
       borderRadius: BorderRadius.all(Radius.circular(4.0)),
@@ -232,8 +259,8 @@ class _Page1State extends State<Page1> {
               child: Column(
                 children: [
                   Image.asset(
-                    'assets/logo.png', // Change to the actual path of your logo image
-                    height: 100, // Adjust the height as needed
+                    'assets/logo.png',
+                    height: 100,
                   ),
                   SizedBox(height: 16),
                   TextFormField(
@@ -262,18 +289,28 @@ class _Page1State extends State<Page1> {
                                 color: Colors.white,
                               ),
                             ),
-                            DropdownButton<String>(
+                            DropdownButton<int>(
                               isExpanded: true,
-                              value: data.dropdownOption1,
-                              items: dropdownOptions.map((String value) {
-                                return DropdownMenuItem<String>(
+                              value: data.limitOption,
+                              items: limitOptions.map((int value) {
+                                return DropdownMenuItem<int>(
                                   value: value,
-                                  child: Text(value, style: TextStyle(color: Colors.white)),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(value.toString(), style: TextStyle(color: Colors.white)),
+                                      Divider(
+                                        color: Colors.white,
+                                        thickness: 0.5,
+                                      ),
+                                    ],
+                                  ),
                                 );
                               }).toList(),
-                              onChanged: (String? newValue) {
-                                data.updateDropdownOption1(newValue!);
+                              onChanged: (int? newValue) {
+                                data.updateLimitOption(newValue!);
                               },
+                              dropdownColor: Color(0xFF1F2732),
                             ),
                           ],
                         ),
@@ -291,16 +328,26 @@ class _Page1State extends State<Page1> {
                             ),
                             DropdownButton<String>(
                               isExpanded: true,
-                              value: data.dropdownOption2,
-                              items: dropdownOptions.map((String value) {
+                              value: data.ratingOption,
+                              items: ratingOptions.map((String value) {
                                 return DropdownMenuItem<String>(
                                   value: value,
-                                  child: Text(value, style: TextStyle(color: Colors.white)),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(value, style: TextStyle(color: Colors.white)),
+                                      Divider(
+                                        color: Colors.white,
+                                        thickness: 0.5,
+                                      ),
+                                    ],
+                                  ),
                                 );
                               }).toList(),
                               onChanged: (String? newValue) {
-                                data.updateDropdownOption2(newValue!);
+                                data.updateRatingOption(newValue!);
                               },
+                              dropdownColor: Color(0xFF1F2732),
                             ),
                           ],
                         ),
@@ -323,8 +370,12 @@ class _Page1State extends State<Page1> {
                       Expanded(
                         flex: 2,
                         child: ElevatedButton(
-                          onPressed: () {
-                            // Search button action
+                          onPressed: () async {
+                            if (data.searchText.isNotEmpty) {
+                              setState(() {
+                                giphyDataFuture = fetchGiphyData(data.searchText, data.limitOption, data.ratingOption);
+                              });
+                            }
                           },
                           child: Text('Search', style: TextStyle(color: Colors.white)),
                         ),
@@ -334,11 +385,73 @@ class _Page1State extends State<Page1> {
                 ],
               ),
             ),
+            // Display the API response below the existing container
+            Expanded(
+              child: FutureBuilder<List<String>>(
+                future: giphyDataFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(child: Text('No data available'));
+                  } else {
+                    // Display the fetched images
+                    return GridView.builder(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 8.0,
+                        mainAxisSpacing: 8.0,
+                      ),
+                      itemCount: snapshot.data!.length,
+                      itemBuilder: (context, index) {
+                        return Image.network(snapshot.data![index]);
+                      },
+                    );
+                  }
+                },
+              ),
+            ),
           ],
         ),
       ),
     );
+    
   }
+
+  // Function to fetch Giphy data based on the provided parameters
+  Future<List<String>> fetchGiphyData(String searchText, int limit, String rating) async {
+  final response = await http.get(Uri.parse(
+      'https://api.giphy.com/v1/gifs/search?api_key=ZjFSjY5rgEywpQ5WUsqJtKQHtAUlzCIx&q=$searchText&limit=$limit&rating=$rating'));
+
+    if (response.statusCode == 200) {
+      // Successful API call
+      final apiData = json.decode(response.body)['data'];
+
+      List<String> webpUrls = List<String>.from(apiData.map<String>((item) {
+        final originalWebpUrl = item['images']['original']['webp'].toString();
+        return originalWebpUrl;
+      }));
+
+      // Create a new Page3History entry with webpUrls
+      final historyEntry = Page3History(
+        searchText: searchText,
+        limitOption: limit,
+        ratingOption: rating,
+        webpUrls: webpUrls,
+      );
+
+      // Add the entry to Page3Data
+      Provider.of<Page3Data>(context, listen: false).updateHistory(historyEntry);
+
+      return webpUrls;
+    } else {
+      // Handle errors
+      throw Exception('Failed to load data. Error ${response.statusCode}');
+    }
+  }
+
 }
 
 class Page2 extends StatelessWidget {
@@ -405,18 +518,47 @@ class Page3 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MainLayout(
-        title: 'Page 3',
-        body: Container(
-          color: Color(0xFF1F2732),
-          child: Center(
-            child: Text(
-              'Creative Design for Page 3',
-              style: TextStyle(fontSize: 24, color: Colors.white),
+      title: 'Page 3',
+      body: Consumer<Page3Data>(
+        builder: (context, page3Data, _) {
+          return Container(
+            color: Color(0xFF1F2732),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'History of Search Text and Dropdown Options',
+                  style: TextStyle(fontSize: 24, color: Colors.white),
+                ),
+                SizedBox(height: 16),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: page3Data.searchHistory.length,
+                    itemBuilder: (context, index) {
+                      var entry = page3Data.searchHistory[index];
+                      return ListTile(
+                        title: Text('Search Text: ${entry.searchText}'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Limit: ${entry.limitOption}'),
+                            Text('Rating: ${entry.ratingOption}'),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ),
-        ));
+          );
+        },
+      ),
+    );
   }
 }
+
+
 
 class MainLayout extends StatelessWidget {
   final String title;
