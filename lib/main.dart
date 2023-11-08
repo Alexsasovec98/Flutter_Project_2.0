@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:convert';
@@ -308,6 +310,7 @@ class _Page1State extends State<Page1> {
   final List<String> ratingOptions = ['G', 'PG', 'PG-13', 'R'];
   Future<List<String>>? giphyDataFuture;
   TextEditingController _searchTextController = TextEditingController();
+  var offset = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -352,6 +355,7 @@ class _Page1State extends State<Page1> {
                     ),
                     style: TextStyle(color: Colors.white),
                     onChanged: (value) {
+                      offset = 0;
                       data.updateSearchText(value);
                     },  
                   ),
@@ -442,6 +446,7 @@ class _Page1State extends State<Page1> {
                           onPressed: () {
                             // Reset button action
                             data.updateSearchText(''); // Set search text to empty
+                            offset = 0;
                             _searchTextController.clear();
                             setState(() {
                               giphyDataFuture = null; // Clear the future to show no images
@@ -483,37 +488,54 @@ class _Page1State extends State<Page1> {
                   } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return Center(child: Text('No data available'));
                   } else {
-                    // Display the fetched images
-                    return GridView.builder(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 8.0,
-                        mainAxisSpacing: 8.0,
-                      ),
-                      itemCount: snapshot.data!.length,
-                      itemBuilder: (context, index) {
-                        return GestureDetector(
-                          onTap: () {
-                            // Handle image tap
-                          },
-                          child: Container(
-                            color: Colors.white, // Set the background color of each grid item
-                            child: Center(
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  CachedNetworkImage(
-                                    imageUrl: snapshot.data![index],
-                                    placeholder: (context, url) => CircularProgressIndicator(),
-                                    errorWidget: (context, url, error) => Icon(Icons.error),
-                                  ),
-                                  // Other widgets in the stack
-                                ],
-                              ),
+                    return Column(
+                      children: [
+                        Expanded(
+                          child: GridView.builder(
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 8.0,
+                              mainAxisSpacing: 8.0,
                             ),
+                            itemCount: snapshot.data!.length,
+                            itemBuilder: (context, index) {
+                              return GestureDetector(
+                                onTap: () {
+                                  // Handle image tap
+                                },
+                                child: Container(
+                                  color: Colors.white, // Set the background color of each grid item
+                                  child: Center(
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        CachedNetworkImage(
+                                          imageUrl: snapshot.data![index],
+                                          placeholder: (context, url) => CircularProgressIndicator(),
+                                          errorWidget: (context, url, error) => Icon(Icons.error),
+                                        ),
+                                        // Other widgets in the stack
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
+                        ),
+                        if (snapshot.data!.isNotEmpty) // Show "Get More" button only if there are images
+                          ElevatedButton(
+                            onPressed: () async {
+                              if (data.searchText.isNotEmpty) {
+                                offset += data.limitOption;
+                                setState(() {
+                                  giphyDataFuture = fetchGiphyData(data.searchText, data.limitOption, data.ratingOption, offset: offset);
+                                });
+                              }
+                            },
+                            child: Text('Get More', style: TextStyle(color: Colors.white)),
+                          ),
+                      ],
                     );
                   }
                 },
@@ -527,35 +549,41 @@ class _Page1State extends State<Page1> {
   }
 
   // Function to fetch Giphy data based on the provided parameters
-  Future<List<String>> fetchGiphyData(String searchText, int limit, String rating) async {
-  final response = await http.get(Uri.parse(
-      'https://api.giphy.com/v1/gifs/search?api_key=ZjFSjY5rgEywpQ5WUsqJtKQHtAUlzCIx&q=$searchText&limit=$limit&rating=$rating'));
+  Future<List<String>> fetchGiphyData(String searchText, int limit, String rating, {int offset=0}) async {
+    var webpUrls = [];
+    var localOffset = 0;
+    var maximumLimit = 25;
+    do {
+      var nextLimit = min(maximumLimit, offset + limit - localOffset);
+      final response = await http.get(Uri.parse(
+      'https://api.giphy.com/v1/gifs/search?api_key=ZjFSjY5rgEywpQ5WUsqJtKQHtAUlzCIx&q=$searchText&limit=$nextLimit&rating=$rating&offset=$localOffset'));
 
-    if (response.statusCode == 200) {
-      // Successful API call
-      final apiData = json.decode(response.body)['data'];
+      if (response.statusCode == 200) {
+        // Successful API call
+        final apiData = json.decode(response.body)['data'];
 
-      List<String> webpUrls = List<String>.from(apiData.map<String>((item) {
-        final originalWebpUrl = item['images']['original']['webp'].toString();
-        return originalWebpUrl;
-      }));
+        List<String> webpUrlsTemp = List<String>.from(apiData.map<String>((item) {
+          final originalWebpUrl = item['images']['original']['webp'].toString();
+          return originalWebpUrl;
+        }));
 
-      // Create a new Page3History entry with webpUrls
-      final historyEntry = Page3History(
-        searchText: searchText,
-        limitOption: limit,
-        ratingOption: rating,
-        webpUrls: webpUrls,
-      );
-
-      // Add the entry to Page3Data
-      Provider.of<Page3Data>(context, listen: false).updateHistory(historyEntry);
-
-      return webpUrls;
-    } else {
-      // Handle errors
-      throw Exception('Failed to load data. Error ${response.statusCode}');
-    }
+        for (var url in webpUrlsTemp) {
+          webpUrls.add(url);
+        }
+      } else {
+        // Handle errors
+        throw Exception('Failed to load data. Error ${response.statusCode}');
+      }
+      localOffset += webpUrls.length;
+    } while (localOffset < offset + limit);
+    var list = List<String>.from(webpUrls);
+    Provider.of<Page3Data>(context, listen: false).updateHistory(Page3History(
+      searchText: searchText,
+      limitOption: limit,
+      ratingOption: rating,
+      webpUrls: list,
+    ));
+    return Future.value(list);
   }
 }
 
@@ -704,19 +732,7 @@ class Page3 extends StatelessWidget {
                     itemCount: page3Data.searchHistory.length,
                     itemBuilder: (context, index) {
                       var entry = page3Data.searchHistory[index];
-                      return Card(
-                        color: Colors.blue, // Set your desired background color
-                        child: ExpansionTile(
-                          tilePadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
-                          title: Text('${entry.searchText} GIF\'s'),
-                          children: [
-                            ListTile(
-                              leading: Image.asset('assets/logo.png'), // Replace with your logo image
-                              title: Text('Label for the expandable menu'),
-                            ),
-                          ],
-                        ),
-                      );
+                      return HistoryEntryTile(entry: entry);
                     },
                   ),
                 ),
@@ -729,8 +745,61 @@ class Page3 extends StatelessWidget {
   }
 }
 
+class HistoryEntryTile extends StatefulWidget {
+  final Page3History entry;
 
+  HistoryEntryTile({required this.entry});
 
+  @override
+  _HistoryEntryTileState createState() => _HistoryEntryTileState();
+}
+
+class _HistoryEntryTileState extends State<HistoryEntryTile> {
+  bool isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Card(
+          color: Colors.blue,
+          child: ListTile(
+            title: Text('${widget.entry.searchText} GIF\'s'),
+            trailing: Icon(
+              isExpanded ? Icons.expand_less : Icons.expand_more,
+              // Use Icons.expand_less when expanded and Icons.expand_more when collapsed
+            ),
+            onTap: () {
+              setState(() {
+                isExpanded = !isExpanded;
+              });
+            },
+          ),
+        ),
+        if (isExpanded) ...[
+          // Additional content/widgets when expanded
+          SizedBox(
+            height: 100, // Adjust the height based on your requirements
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: widget.entry.webpUrls.length,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: CachedNetworkImage(
+                    imageUrl: widget.entry.webpUrls[index],
+                    placeholder: (context, url) => CircularProgressIndicator(),
+                    errorWidget: (context, url, error) => Icon(Icons.error),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
 
 class MainLayout extends StatelessWidget {
   final String title;
