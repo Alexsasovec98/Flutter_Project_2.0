@@ -492,7 +492,27 @@ class _Page1State extends State<Page1> {
                       ),
                       itemCount: snapshot.data!.length,
                       itemBuilder: (context, index) {
-                        return Image.network(snapshot.data![index]);
+                        return GestureDetector(
+                          onTap: () {
+                            // Handle image tap
+                          },
+                          child: Container(
+                            color: Colors.white, // Set the background color of each grid item
+                            child: Center(
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  CachedNetworkImage(
+                                    imageUrl: snapshot.data![index],
+                                    placeholder: (context, url) => CircularProgressIndicator(),
+                                    errorWidget: (context, url, error) => Icon(Icons.error),
+                                  ),
+                                  // Other widgets in the stack
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
                       },
                     );
                   }
@@ -539,7 +559,13 @@ class _Page1State extends State<Page1> {
   }
 }
 
-class Page2 extends StatelessWidget {
+class Page2 extends StatefulWidget {
+  @override
+  _Page2State createState() => _Page2State();
+}
+
+// Inside the _Page2State class
+class _Page2State extends State<Page2> {
   @override
   Widget build(BuildContext context) {
     return MainLayout(
@@ -548,7 +574,7 @@ class Page2 extends StatelessWidget {
         builder: (context, page2Data, _) {
           List<String> webpUrls = page2Data.getFavoritedUrls();
           return Container(
-            color: Color(0xFF1F2732), // Set the background color for the entire page
+            color: Color(0xFF1F2732),
             child: Column(
               children: [
                 Container(
@@ -571,24 +597,7 @@ class Page2 extends StatelessWidget {
                           ),
                           delegate: SliverChildBuilderDelegate(
                             (BuildContext context, int index) {
-                              return GestureDetector(
-                                onTap: () {
-                                  _showImageDialog(context, webpUrls[index]);
-                                },
-                                child: Container(
-                                  color: Colors.white, // Set the background color of each grid item
-                                  child: Stack(
-                                    children: [
-                                      Image.network(webpUrls[index]),
-                                      Positioned(
-                                        top: 8.0,
-                                        right: 8.0,
-                                        child: StarIcon(slug: page2Data.getSlugForUrl(webpUrls[index]), imageUrl: webpUrls[index]),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
+                              return _buildImageWithLoadingSpinner(context, webpUrls[index]);
                             },
                             childCount: webpUrls.length,
                           ),
@@ -605,6 +614,62 @@ class Page2 extends StatelessWidget {
     );
   }
 
+  Widget _buildImageWithLoadingSpinner(BuildContext context, String imageUrl) {
+    return FutureBuilder(
+      future: _loadImage(imageUrl),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingSpinner();
+        } else if (snapshot.hasError) {
+          return _buildErrorWidget();
+        } else {
+          return GestureDetector(
+            onTap: () {
+              _showImageDialog(context, imageUrl);
+            },
+            child: Container(
+              color: Colors.white, // Set the background color of each grid item
+              child: Stack(
+                children: [
+                  Image.network(imageUrl),
+                  Positioned(
+                    top: 8.0,
+                    right: 8.0,
+                    child: StarIcon(slug: Provider.of<Page2Data>(context).getSlugForUrl(imageUrl), imageUrl: imageUrl),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildLoadingSpinner() {
+    return Container(
+      color: Colors.white, // Set the background color
+      child: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+
+  Widget _buildErrorWidget() {
+    return Center(
+      child: Icon(
+        Icons.error,
+        color: Colors.red,
+        size: 40,
+      ),
+    );
+  }
+
+  Future<void> _loadImage(String imageUrl) async {
+    // Simulate loading time (replace this with your actual image loading logic)
+    await Future.delayed(Duration(seconds: 2));
+  }
+
   void _showImageDialog(BuildContext context, String imageUrl) {
     showDialog(
       context: context,
@@ -616,8 +681,6 @@ class Page2 extends StatelessWidget {
     );
   }
 }
-
-
 
 class Page3 extends StatelessWidget {
   @override
