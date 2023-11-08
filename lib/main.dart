@@ -7,6 +7,45 @@ import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:path_provider/path_provider.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initPathProvider();
+  runApp(
+    //setting all the needed providers
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<GIFFinderData>(
+            create: (context) => GIFFinderData(),
+          ),
+          ChangeNotifierProvider<FavoritesPageData>(
+            create: (context) => FavoritesPageData(),
+          ),
+          ChangeNotifierProvider<HistoryPageData>(
+            create: (context) => HistoryPageData(),
+          ),
+        ],
+        child: MyApp(),
+      ),
+    );
+}
+
+Future<void> initPathProvider() async {
+  await getTemporaryDirectory();
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      theme: ThemeData(
+        primaryColor: Color(0xFF1D242E),
+        appBarTheme: AppBarTheme(backgroundColor: Color(0xFF1D242E)),
+      ),
+      home: HomePage(),
+    );
+  }
+}
+
 //This class is used to keep and timely update data in search fields for GIF Finder page
 class GIFFinderData extends ChangeNotifier {
   String searchTextData = ''; // Default "search term" option
@@ -124,41 +163,78 @@ class StarIcon extends StatelessWidget {
   }
 }
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await initPathProvider();
-  runApp(
-    //setting all the needed providers
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<GIFFinderData>(
-            create: (context) => GIFFinderData(),
-          ),
-          ChangeNotifierProvider<FavoritesPageData>(
-            create: (context) => FavoritesPageData(),
-          ),
-          ChangeNotifierProvider<HistoryPageData>(
-            create: (context) => HistoryPageData(),
-          ),
-        ],
-        child: MyApp(),
-      ),
-    );
-}
+//global layout
+class MainLayout extends StatelessWidget {
+  final String title;
+  final Widget body;
 
-Future<void> initPathProvider() async {
-  await getTemporaryDirectory();
-}
+  MainLayout({required this.title, required this.body});
 
-class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: ThemeData(
-        primaryColor: Color(0xFF1D242E),
-        appBarTheme: AppBarTheme(backgroundColor: Color(0xFF1D242E)),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          title,
+          style: TextStyle(fontFamily: 'Pacifico', fontSize: 24),
+        ),
       ),
-      home: HomePage(),
+      drawer: SideMenu(),
+      body: body,
+    );
+  }
+}
+
+//side menu
+class SideMenu extends StatelessWidget {
+  void _navigateToPage(BuildContext context, Widget page) {
+    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => page));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: Container(
+        color: Color(0xFF1D242E),
+        child: Column(
+          children: <Widget>[
+            Container(
+              margin: EdgeInsets.only(top: 30),
+              child: _buildMenuItem('Home', () => _navigateToPage(context, HomePage())),
+            ),
+            Divider(color: Colors.black),
+            Container(
+              child: _buildMenuItem('GIF Finder', () => _navigateToPage(context, GIFFinderPage())),
+            ),
+            Divider(color: Colors.black),
+            Container(
+              child: _buildMenuItem('Favorite GIF\'s', () => _navigateToPage(context, FavoritesPage())),
+            ),
+            Divider(color: Colors.black),
+            Container(
+              child: _buildMenuItem('Your GIF History', () => _navigateToPage(context, HistoryPage())),
+            ),
+            Divider(color: Colors.black),
+            Container(
+              child: _buildMenuItem('Documentation', () => _navigateToPage(context, DocumentationPage())),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuItem(String title, VoidCallback onTap) {
+    return ListTile(
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      onTap: onTap,
     );
   }
 }
@@ -342,11 +418,13 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
       borderSide: BorderSide(color: Colors.white, width: 2.0),
     );
 
+    //page layout
     return MainLayout(
       title: 'GIF Finder',
       body: Container(
         color: Color(0xFF1F2732),
         child: Column(
+          //centering items
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
@@ -358,6 +436,7 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
                     height: 100,
                   ),
                   SizedBox(height: 16),
+                  //main search text field
                   TextFormField(
                     controller: _searchTextController,
                     decoration: InputDecoration(
@@ -373,12 +452,14 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
                       ),
                     ),
                     style: TextStyle(color: Colors.white),
+                    //updating term
                     onChanged: (value) {
                       offset = 0;
                       data.updateSearchText(value);
                     },
                   ),
                   SizedBox(height: 16),
+                  //row setup for drop downs that are located horizontally and each take 50% of the width(with flex)
                   Row(
                     children: [
                       Expanded(
@@ -393,8 +474,10 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
                             ),
                             DropdownButton<int>(
                               isExpanded: true,
+                              //getting options
                               value: data.numerOfGifsData,
                               items: limitOptions.map((int value) {
+                                //listing all the items in drop-down menu
                                 return DropdownMenuItem<int>(
                                   value: value,
                                   child: Column(
@@ -409,6 +492,7 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
                                   ),
                                 );
                               }).toList(),
+                              //updating the drop down chosen option
                               onChanged: (int? newValue) {
                                 data.updateNumberOfGifsData(newValue!);
                               },
@@ -418,6 +502,7 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
                         ),
                       ),
                       SizedBox(width: 16),
+                      //another drop down
                       Expanded(
                         flex: 1,
                         child: Column(
@@ -446,6 +531,7 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
                                   ),
                                 );
                               }).toList(),
+                              //updating value
                               onChanged: (String? newValue) {
                                 data.updateRatingOption(newValue!);
                               },
@@ -457,18 +543,19 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
                     ],
                   ),
                   SizedBox(height: 16),
+                  //setting up both buttons horizontally again
                   Row(
                     children: [
                       Expanded(
                         flex: 1,
                         child: ElevatedButton(
                           onPressed: () {
-                            // Reset button action
-                            data.updateSearchText(''); // Set search text to empty
+                            // Reset button in action
+                            data.updateSearchText('');
                             offset = 0;
                             _searchTextController.clear();
                             setState(() {
-                              giphyDataFuture = null; // Clear the future to show no images
+                              giphyDataFuture = null;
                             });
                           },
                           child: Text('Reset', style: TextStyle(color: Colors.white)),
@@ -478,6 +565,7 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
                       Expanded(
                         flex: 2,
                         child: ElevatedButton(
+                          //seatch button in action
                           onPressed: () async {
                             if (data.searchTextData.isNotEmpty) {
                               setState(() {
@@ -493,24 +581,38 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
                 ],
               ),
             ),
-            // Display the API response below the existing container
+            //displaying API response below
             Expanded(
               child: FutureBuilder<List<String>>(
                 future: giphyDataFuture,
                 builder: (context, snapshot) {
-                  if (giphyDataFuture == null) {
-                    return Center(child: Text('Press "Search" to find GIFs'));
-                  } else if (snapshot.connectionState == ConnectionState.waiting) {
+                  if (giphyDataFuture == null) 
+                  {
+                    return Center(child: Text('Press "Search" to find GIFs', style: TextStyle(color: Colors.white),));
+                  } 
+                  else if (snapshot.connectionState == ConnectionState.waiting) 
+                  {
                     return Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
+                  } 
+                  else if (snapshot.hasError)
+                  {
                     return Center(child: Text('Error: ${snapshot.error}'));
-                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return Center(child: Text('No data available'));
-                  } else {
-                    // Display the fetched images
+                  } 
+                  else if (!snapshot.hasData) 
+                  {
+                    return Center(child: Text('No data available', style: TextStyle(color: Colors.white),));
+                  } 
+                  else if(snapshot.data!.isEmpty)
+                  {
+                    return Center(child: Text('Please Provide Search Term', style: TextStyle(color: Colors.white),));
+                  }
+                  else 
+                  {
+                    //displaying fetched images
                     return Column(
                       children: [
                         Expanded(
+                          //gridview. here it worked without slivers fsr
                           child: GridView.builder(
                             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 2,
@@ -521,23 +623,27 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
                             itemBuilder: (context, index) {
                               return GestureDetector(
                                 onTap: () {
-                                  // Handle image tap
+                                  //will handle action
                                 },
                                 child: Container(
-                                  color: Colors.white, // Set the background color of each grid item
+                                  color: Colors.white,
                                   child: Stack(
                                     children: [
                                       CachedNetworkImage(
                                         imageUrl: snapshot.data![index],
+                                        //spinner. using basic one here. I created custom one for another page before, but I did make that local 
+                                        //for that page, since I did not think I will need that func in another page. I did not make it global
+                                        //It is one small drawback, since the spinner here is located on left top corner. I cant center it since
+                                        //it will center star icon as well and I dont need it
                                         placeholder: (context, url) => CircularProgressIndicator(),
                                         errorWidget: (context, url, error) => Icon(Icons.error),
                                       ),
+                                      //star for favoriting items
                                       Positioned(
                                         top: 8.0,
                                         right: 8.0,
                                         child: StarIcon(slug: snapshot.data![index].toString(), imageUrl: snapshot.data![index]),
                                       ),
-                                      // Other widgets in the stack
                                     ],
                                   ),
                                 ),
@@ -545,13 +651,15 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
                             },
                           ),
                         ),
-                        if (snapshot.data!.isNotEmpty) // Show "Get More" button only if there are images
+                        //this checks if there are any current GIF's on the page so GetMore button is possible
+                        if (snapshot.data!.isNotEmpty)
                           ElevatedButton(
                             onPressed: () async {
                               if (data.searchTextData.isNotEmpty) {
                                 offset += data.numerOfGifsData;
                                 setState(() {
-                                  giphyDataFuture = fetchGiphyData(data.searchText, data.limitOption, data.ratingOption, offset: offset);
+                                  //getting data
+                                  giphyDataFuture = fetchGiphyData(data.searchTextData, data.numerOfGifsData, data.ageRestrictionData, offset: offset);
                                 });
                               }
                             },
@@ -569,18 +677,17 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
     );
   }
 
-  // Function to fetch Giphy data based on the provided parameters
+  // Fetching specific data from API
   Future<List<String>> fetchGiphyData(String searchText, int limit, String rating, {int offset=0}) async {
     var webpUrls = [];
-    var localOffset = 0;
-    var maximumLimit = 25;
+    int localOffset = 0;
+    int maximumLimit = 25;
     do {
-      var nextLimit = min(maximumLimit, offset + limit - localOffset);
+      int nextLimit = min(maximumLimit, offset + limit - localOffset);
       final response = await http.get(Uri.parse(
       'https://api.giphy.com/v1/gifs/search?api_key=ZjFSjY5rgEywpQ5WUsqJtKQHtAUlzCIx&q=$searchText&limit=$nextLimit&rating=$rating&offset=$localOffset'));
 
       if (response.statusCode == 200) {
-        // Successful API call
         final apiData = json.decode(response.body)['data'];
 
         List<String> webpUrlsTemp = List<String>.from(apiData.map<String>((item) {
@@ -592,14 +699,12 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
           webpUrls.add(url);
         }
       } else {
-        // Handle errors
         throw Exception('Failed to load data. Error ${response.statusCode}');
       }
       localOffset += webpUrls.length;
     } while (localOffset < offset + limit);
     var list = List<String>.from(webpUrls);
-    // Create a new Page3History entry with webpUrls
-    // Add the entry to Page3Data
+    //setting provider with needed data from search
     Provider.of<HistoryPageData>(context, listen: false).updateHistory(HistoryData(
       searchText: searchText,
       limitOption: limit,
@@ -610,19 +715,20 @@ class _GIFFinderPageState extends State<GIFFinderPage> {
   }
 }
 
-class Page2 extends StatefulWidget {
+//setting up Favorites Page
+class FavoritesPage extends StatefulWidget {
   @override
-  _Page2State createState() => _Page2State();
+  _FavoritesPageState createState() => _FavoritesPageState();
 }
 
-// Inside the _Page2State class
-class _Page2State extends State<Page2> {
+class _FavoritesPageState extends State<FavoritesPage> {
   @override
   Widget build(BuildContext context) {
     return MainLayout(
       title: 'Favorite GIF\'s',
       body: Consumer<FavoritesPageData>(
         builder: (context, page2Data, _) {
+          //getting data from provider
           List<String> webpUrls = page2Data.getFavoritedUrls();
           return Container(
             color: Color(0xFF1F2732),
@@ -637,6 +743,7 @@ class _Page2State extends State<Page2> {
                 ),
                 Expanded(
                   child: CustomScrollView(
+                    //againg using slivers for correct rendering
                     slivers: [
                       SliverPadding(
                         padding: EdgeInsets.all(16.0),
@@ -648,6 +755,7 @@ class _Page2State extends State<Page2> {
                           ),
                           delegate: SliverChildBuilderDelegate(
                             (BuildContext context, int index) {
+                              //using that custom GIF display logic widget that I shouldve made global
                               return _buildImageWithLoadingSpinner(context, webpUrls[index]);
                             },
                             childCount: webpUrls.length,
@@ -665,11 +773,13 @@ class _Page2State extends State<Page2> {
     );
   }
 
+  //custom GIF entry builder 
   Widget _buildImageWithLoadingSpinner(BuildContext context, String imageUrl) {
     return FutureBuilder(
       future: _loadImage(imageUrl),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
+          //custom spinner for loading
           return _buildLoadingSpinner();
         } else if (snapshot.hasError) {
           return _buildErrorWidget();
@@ -678,6 +788,7 @@ class _Page2State extends State<Page2> {
             onTap: () {
               _showImageDialog(context, imageUrl);
             },
+            //GIF + starIcon
             child: Container(
               color: Colors.white, // Set the background color of each grid item
               child: Stack(
@@ -720,7 +831,7 @@ class _Page2State extends State<Page2> {
     // Simulate loading time (replace this with your actual image loading logic)
     await Future.delayed(Duration(seconds: 2));
   }
-
+  //popup
   void _showImageDialog(BuildContext context, String imageUrl) {
     showDialog(
       context: context,
@@ -733,9 +844,11 @@ class _Page2State extends State<Page2> {
   }
 }
 
-class Page3 extends StatelessWidget {
+//setting up History Page
+class HistoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    //History Page Layout
     return MainLayout(
       title: 'Your GIF History',
       body: Consumer<HistoryPageData>(
@@ -750,9 +863,12 @@ class Page3 extends StatelessWidget {
                   height: 100,
                 ),
                 Expanded(
+                  //I had a problem with displaying GIF's inside of the expandable widget, so I found out about 
+                  //ListView widget existence and set up those GIF's as a horizontal scroll
                   child: ListView.builder(
                     itemCount: page3Data.searchHistory.length,
                     itemBuilder: (context, index) {
+                      //getting data from provider
                       var entry = page3Data.searchHistory[index];
                       return HistoryEntryTile(entry: entry);
                     },
@@ -767,8 +883,9 @@ class Page3 extends StatelessWidget {
   }
 }
 
+//classes that is used to make horizontal scrollable line of GIF's for each entry
 class HistoryEntryTile extends StatefulWidget {
-  final Page3History entry;
+  final HistoryData entry;
 
   HistoryEntryTile({required this.entry});
 
@@ -789,7 +906,6 @@ class _HistoryEntryTileState extends State<HistoryEntryTile> {
             title: Text('${widget.entry.searchText} GIF\'s'),
             trailing: Icon(
               isExpanded ? Icons.expand_less : Icons.expand_more,
-              // Use Icons.expand_less when expanded and Icons.expand_more when collapsed
             ),
             onTap: () {
               setState(() {
@@ -799,9 +915,8 @@ class _HistoryEntryTileState extends State<HistoryEntryTile> {
           ),
         ),
         if (isExpanded) ...[
-          // Additional content/widgets when expanded
           SizedBox(
-            height: 100, // Adjust the height based on your requirements
+            height: 100,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: widget.entry.webpUrls.length,
@@ -823,72 +938,146 @@ class _HistoryEntryTileState extends State<HistoryEntryTile> {
   }
 }
 
-class MainLayout extends StatelessWidget {
-  final String title;
-  final Widget body;
-
-  MainLayout({required this.title, required this.body});
-
+class DocumentationPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          title,
-          style: TextStyle(fontFamily: 'Pacifico', fontSize: 24),
+    return MainLayout(
+      title: 'Documentation',
+      body: Container(
+        color: Color(0xFF1F2732),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/logo.png',
+                height: 100,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'GIF Finder',
+                style: TextStyle(
+                  fontSize: 24,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Designed and developed by Alexander Karpyuk',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Project 2 is made for IGME-340 class.',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 30),
+              Text(
+                'Sources',
+                style: TextStyle(
+                  fontSize: 20,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.left,
+              ),
+              SizedBox(height: 16),
+              Container(
+                padding: EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '1. GIF Finder API was used as the API source for this project',
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      '2. StackOverflow was used as the code help source for this project',
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                     Text(
+                      '3. YouTube and Resourses channel in Slack were used as the video-code help source for this project',
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      '4. Paint was used tp create the logo for the app',
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+               SizedBox(height: 30),
+              Text(
+                'Processes',
+                style: TextStyle(
+                  fontSize: 20,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.left,
+              ),
+              Container(
+                padding: EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '1. Decided to pursue minimalistic, eye-pleasing design with mono color that emphisized efficency and purposfulness of the app. The same goes for the font. I decided to use one of the standart fonts, since it is functional and supports official design code for the app',
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      '2. Some of the code path are included in comments. Want to emphasize that some of the concepts were not showcased enough/not at all in the lectures and resources - had to find a lot of information on the web about usage and mixing of specific widgets. From that happened some inconsistency in code patterns for alike looking situations. One slight difference in the layout and concept stops working. Overall - front end as always a garbage:)',
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                     Text(
+                      '3. I tried to have slightly different layouts throughout the pages that still resemble the same oficcial look and feel like one application. At the same time different widgets/mixes are used, such as horizontal scroll on the History Page',
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      '4. Interesting part was with provider and all the pages states. I had to make a system that would allow to fav/unfav from different pages resulting in the update of one page',
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      '5. Get More is used in a way that it updates the page showing the doubled-up amount of results. I favored it to "next/prev" functionality since I did not find it interesting code-wise and showing more results on the same page without the need to jump between outputs to be more user-friendly. I delibirately left top search part not scrollable so user always has ability to re-search. Each "Get More" call is also saved as a new entry on the history page',
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      drawer: SideMenu(),
-      body: body,
     );
   }
 }
 
-class SideMenu extends StatelessWidget {
-  void _navigateToPage(BuildContext context, Widget page) {
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => page));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      child: Container(
-        color: Color(0xFF1D242E),
-        child: Column(
-          children: <Widget>[
-            Container(
-              margin: EdgeInsets.only(top: 30),
-              child: _buildMenuItem('Home', () => _navigateToPage(context, HomePage())),
-            ),
-            Divider(color: Colors.black),
-            Container(
-              child: _buildMenuItem('GIF Finder', () => _navigateToPage(context, GIFFinderPage())),
-            ),
-            Divider(color: Colors.black),
-            Container(
-              child: _buildMenuItem('Favorite GIF\'s', () => _navigateToPage(context, Page2())),
-            ),
-            Divider(color: Colors.black),
-            Container(
-              child: _buildMenuItem('Your GIF History', () => _navigateToPage(context, Page3())),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMenuItem(String title, VoidCallback onTap) {
-    return ListTile(
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 16,
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      onTap: onTap,
-    );
-  }
-}
