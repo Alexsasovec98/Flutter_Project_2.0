@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 class Page1Data extends ChangeNotifier {
   String searchText = '';
   int limitOption = 5; // Default limit option
-  String ratingOption = 'g'; // Default rating option
+  String ratingOption = 'G'; // Default rating option
 
   void updateSearchText(String text) {
     searchText = text;
@@ -103,7 +103,6 @@ class Page3History {
   });
 }
 
-
 class HomeScreen extends StatefulWidget {
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -111,12 +110,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<String> webpUrls = [];
-  List<Map<String, dynamic>> data = []; // Declare data as a class variable
+  List<Map<String, dynamic>> data = [];
 
   @override
   void initState() {
     super.initState();
-    // Call your API request method when the widget is being initialized
     fetchData();
   }
 
@@ -125,11 +123,10 @@ class _HomeScreenState extends State<HomeScreen> {
         'https://api.giphy.com/v1/gifs/trending?api_key=ZjFSjY5rgEywpQ5WUsqJtKQHtAUlzCIx&limit=10'));
 
     if (response.statusCode == 200) {
-      // Successful API call
       final apiData = json.decode(response.body)['data'];
 
       setState(() {
-        data = List<Map<String, dynamic>>.from(apiData); // Assign apiData to data
+        data = List<Map<String, dynamic>>.from(apiData);
         webpUrls = data
             .map<String>((item) {
               final originalWebpUrl = item['images']['original']['webp'].toString();
@@ -138,7 +135,6 @@ class _HomeScreenState extends State<HomeScreen> {
             .toList();
       });
     } else {
-      // Handle errors
       setState(() {
         webpUrls = ['Failed to load data. Error ${response.statusCode}'];
       });
@@ -159,44 +155,91 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return MainLayout(
-      title: 'Home Page',
-      body: CustomScrollView(
-        slivers: [
-          SliverPadding(
-            padding: EdgeInsets.all(16.0),
-            sliver: SliverGrid(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 8.0,
-                mainAxisSpacing: 8.0,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (BuildContext context, int index) {
-                  return GestureDetector(
-                    onTap: () {
-                      _showImageDialog(webpUrls[index], data[index]['slug'].toString());
-                    },
-                    child: Stack(
-                      children: [
-                        Image.network(webpUrls[index]),
-                        Positioned(
-                          top: 8.0,
-                          right: 8.0,
-                          child: StarIcon(slug: data[index]['slug'].toString(), imageUrl: webpUrls[index]),
-                        ),
-                      ],
+      title: 'Home',
+      body: Container(
+        color: Color(0xFF1F2732),
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  SizedBox(height: 16),
+                  Image.asset(
+                    'assets/logo.png',
+                    height: 100,
+                  ),
+                  Center(
+                    child: Text(
+                      'GIF Finder by Alex',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20
+                      ),
                     ),
-                  );
-                },
-                childCount: webpUrls.length,
+                  ),
+                  SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      'Best Place to Find Your Next Favorite GIF.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      'Enjoy your sneak peek at the 10 most trending GIFs in the USA.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            SliverPadding(
+              padding: EdgeInsets.all(16.0),
+              sliver: SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 8.0,
+                  mainAxisSpacing: 8.0,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (BuildContext context, int index) {
+                    return GestureDetector(
+                      onTap: () {
+                        _showImageDialog(webpUrls[index], data[index]['slug'].toString());
+                      },
+                      child: Container(
+                        color: Colors.white,
+                        child: Stack(
+                          children: [
+                            Image.network(webpUrls[index]),
+                            Positioned(
+                              top: 8.0,
+                              right: 8.0,
+                              child: StarIcon(slug: data[index]['slug'].toString(), imageUrl: webpUrls[index]),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  childCount: webpUrls.length,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
 
 
 class StarIcon extends StatelessWidget {
@@ -217,9 +260,23 @@ class StarIcon extends StatelessWidget {
             // Toggle the state of the star icon on click
             page2Data.updateStarState(slug, !isStarred, imageUrl);
           },
-          child: Icon(
-            isStarred ? Icons.star : Icons.star_border,
-            color: isStarred ? Colors.yellow : null,
+          child: FittedBox(
+            fit: BoxFit.contain,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.star_border,
+                  color:Colors.black,
+                  size: 30,
+                ),
+                Icon(
+                  isStarred ? Icons.star : Icons.star_border,
+                  color: isStarred ? Color.fromARGB(250, 238, 217, 24) : Colors.orange,
+                  size: 20,
+                ),
+              ],           
+            ),
           ),
         );
       },
@@ -234,7 +291,7 @@ class Page1 extends StatefulWidget {
 
 class _Page1State extends State<Page1> {
   final List<int> limitOptions = [5, 10, 15, 20];
-  final List<String> ratingOptions = ['g', 'pg', 'pg-13', 'r'];
+  final List<String> ratingOptions = ['G', 'PG', 'PG-13', 'R'];
   Future<List<String>>? giphyDataFuture;
 
   @override
@@ -248,11 +305,11 @@ class _Page1State extends State<Page1> {
     );
 
     return MainLayout(
-      title: 'Page 1',
+      title: 'GIF Finder',
       body: Container(
         color: Color(0xFF1F2732),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
               padding: EdgeInsets.all(16),
@@ -265,10 +322,16 @@ class _Page1State extends State<Page1> {
                   SizedBox(height: 16),
                   TextFormField(
                     decoration: InputDecoration(
-                      labelText: 'Search',
+                      labelText: 'Search Term',
                       labelStyle: TextStyle(color: Colors.white),
-                      enabledBorder: customBorder,
-                      focusedBorder: customBorder,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(4.0)),
+                        borderSide: BorderSide(color: Colors.white, width: 2.0),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(4.0)),
+                        borderSide: BorderSide(color: Colors.white, width: 2.0),
+                      ),
                     ),
                     initialValue: data.searchText,
                     style: TextStyle(color: Colors.white),
@@ -451,51 +514,68 @@ class _Page1State extends State<Page1> {
       throw Exception('Failed to load data. Error ${response.statusCode}');
     }
   }
-
 }
 
 class Page2 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MainLayout(
-      title: 'Page 2',
+      title: 'Favorite GIF\'s',
       body: Consumer<Page2Data>(
         builder: (context, page2Data, _) {
           List<String> webpUrls = page2Data.getFavoritedUrls();
-
-          return CustomScrollView(
-            slivers: [
-              SliverPadding(
-                padding: EdgeInsets.all(16.0),
-                sliver: SliverGrid(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 8.0,
-                    mainAxisSpacing: 8.0,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (BuildContext context, int index) {
-                      return GestureDetector(
-                        onTap: () {
-                          _showImageDialog(context, webpUrls[index]);
-                        },
-                        child: Stack(
-                          children: [
-                            Image.network(webpUrls[index]),
-                            Positioned(
-                              top: 8.0,
-                              right: 8.0,
-                              child: StarIcon(slug: page2Data.getSlugForUrl(webpUrls[index]), imageUrl: webpUrls[index]),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    childCount: webpUrls.length,
+          return Container(
+            color: Color(0xFF1F2732), // Set the background color for the entire page
+            child: Column(
+              children: [
+                Container(
+                  padding: EdgeInsets.only(top: 16.0, left: 16.0, right: 16.0),
+                  child: Image.asset(
+                    'assets/logo.png',
+                    height: 100,
                   ),
                 ),
-              ),
-            ],
+                Expanded(
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverPadding(
+                        padding: EdgeInsets.all(16.0),
+                        sliver: SliverGrid(
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 8.0,
+                            mainAxisSpacing: 8.0,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (BuildContext context, int index) {
+                              return GestureDetector(
+                                onTap: () {
+                                  _showImageDialog(context, webpUrls[index]);
+                                },
+                                child: Container(
+                                  color: Colors.white, // Set the background color of each grid item
+                                  child: Stack(
+                                    children: [
+                                      Image.network(webpUrls[index]),
+                                      Positioned(
+                                        top: 8.0,
+                                        right: 8.0,
+                                        child: StarIcon(slug: page2Data.getSlugForUrl(webpUrls[index]), imageUrl: webpUrls[index]),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                            childCount: webpUrls.length,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -514,11 +594,13 @@ class Page2 extends StatelessWidget {
   }
 }
 
+
+
 class Page3 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MainLayout(
-      title: 'Page 3',
+      title: 'Your GIF History',
       body: Consumer<Page3Data>(
         builder: (context, page3Data, _) {
           return Container(
@@ -526,23 +608,26 @@ class Page3 extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  'History of Search Text and Dropdown Options',
-                  style: TextStyle(fontSize: 24, color: Colors.white),
-                ),
                 SizedBox(height: 16),
+                Image.asset(
+                  'assets/logo.png',
+                  height: 100,
+                ),
                 Expanded(
                   child: ListView.builder(
                     itemCount: page3Data.searchHistory.length,
                     itemBuilder: (context, index) {
                       var entry = page3Data.searchHistory[index];
-                      return ListTile(
-                        title: Text('Search Text: ${entry.searchText}'),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      return Card(
+                        color: Colors.blue, // Set your desired background color
+                        child: ExpansionTile(
+                          tilePadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
+                          title: Text('${entry.searchText} GIF\'s'),
                           children: [
-                            Text('Limit: ${entry.limitOption}'),
-                            Text('Rating: ${entry.ratingOption}'),
+                            ListTile(
+                              leading: Image.asset('assets/logo.png'), // Replace with your logo image
+                              title: Text('Label for the expandable menu'),
+                            ),
                           ],
                         ),
                       );
@@ -557,6 +642,7 @@ class Page3 extends StatelessWidget {
     );
   }
 }
+
 
 
 
@@ -600,17 +686,17 @@ class SideMenu extends StatelessWidget {
             Divider(color: Colors.black),
             Container(
               margin: EdgeInsets.only(top: 10),
-              child: _buildMenuItem('Page 1', () => _navigateToPage(context, Page1())),
+              child: _buildMenuItem('GIF Finder', () => _navigateToPage(context, Page1())),
             ),
             Divider(color: Colors.black),
             Container(
               margin: EdgeInsets.only(top: 10),
-              child: _buildMenuItem('Page 2', () => _navigateToPage(context, Page2())),
+              child: _buildMenuItem('Favorite GIF\'s', () => _navigateToPage(context, Page2())),
             ),
             Divider(color: Colors.black),
             Container(
               margin: EdgeInsets.only(top: 10),
-              child: _buildMenuItem('Page 3', () => _navigateToPage(context, Page3())),
+              child: _buildMenuItem('Your GIF History', () => _navigateToPage(context, Page3())),
             ),
           ],
         ),
