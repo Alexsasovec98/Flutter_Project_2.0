@@ -1,5 +1,5 @@
+//importing packages
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:convert';
@@ -7,66 +7,33 @@ import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:path_provider/path_provider.dart';
 
-class Page1Data extends ChangeNotifier {
-  String searchText = '';
-  int limitOption = 5; // Default limit option
-  String ratingOption = 'G'; // Default rating option
+//This class is used to keep and timely update data in search fields for GIF Finder page
+class GIFFinderData extends ChangeNotifier {
+  String searchTextData = ''; // Default "search term" option
+  int numerOfGifsData = 5; // Default "number of gif's" option
+  String ageRestrictionData = 'G'; // Default "age restriction" option
 
+  //timely updating data in fields
   void updateSearchText(String text) {
-    searchText = text;
+    searchTextData = text;
     notifyListeners();
   }
 
-  void updateLimitOption(int limit) {
-    limitOption = limit;
+  void updateNumberOfGifsData(int limit) {
+    numerOfGifsData = limit;
     notifyListeners();
   }
 
   void updateRatingOption(String rating) {
-    ratingOption = rating;
+    ageRestrictionData = rating;
     notifyListeners();
   }
 }
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await initPathProvider();
-  runApp(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<Page1Data>(
-            create: (context) => Page1Data(),
-          ),
-          ChangeNotifierProvider<Page2Data>(
-            create: (context) => Page2Data(),
-          ),
-          ChangeNotifierProvider<Page3Data>(
-            create: (context) => Page3Data(),
-          ),
-        ],
-        child: MyApp(),
-      ),
-    );
-}
-
-Future<void> initPathProvider() async {
-  await getTemporaryDirectory();
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: ThemeData(
-        primaryColor: Color(0xFF1D242E),
-        appBarTheme: AppBarTheme(backgroundColor: Color(0xFF1D242E)),
-      ),
-      home: HomeScreen(),
-    );
-  }
-}
-
-class Page2Data extends ChangeNotifier {
+//This class is used to keep all needed data for Favorites Page
+//If we star image on Home Page or Gif Finder Page - that image is displayed on this page with star filled.
+//If unstarred - image disappears from the page and star is not filled on all the pages
+class FavoritesPageData extends ChangeNotifier {
   Map<String, String> favoritedUrls = {};
 
   void updateStarState(String slug, bool isFilled, String imageUrl) {
@@ -74,39 +41,39 @@ class Page2Data extends ChangeNotifier {
     notifyListeners();
   }
 
+  //getting data from saved
   List<String> getFavoritedUrls() {
     return favoritedUrls.values.where((url) => url.isNotEmpty).toList();
   }
 
   String getSlugForUrl(String imageUrl) {
-    // Implement the logic to retrieve the slug for the given imageUrl
-    // This might involve iterating through the favoritedUrls and finding a match
-    // You can replace the example logic below with your actual implementation
     for (var entry in favoritedUrls.entries) {
       if (entry.value == imageUrl) {
         return entry.key;
       }
     }
-    return ''; // Return an appropriate default value if no match is found
+    return ''; //returning appropriate default value if no match is found
   }
 }
 
-class Page3Data extends ChangeNotifier {
-  List<Page3History> searchHistory = [];
+//This class is used to keep all needed data for Favorites Page
+class HistoryPageData extends ChangeNotifier {
+  List<HistoryData> searchHistory = [];
 
-  void updateHistory(Page3History history) {
+  void updateHistory(HistoryData history) {
     searchHistory.add(history);
     notifyListeners();
   }
 }
 
-class Page3History {
+//we are getting all the data saved in GIF Finder page
+class HistoryData {
   final String searchText;
-  final int limitOption;  // Corrected variable name
-  final String ratingOption;  // Corrected variable name
-  List<String> webpUrls; // Updated to allow modification
+  final int limitOption;  
+  final String ratingOption;  
+  List<String> webpUrls; 
 
-  Page3History({
+  HistoryData({
     required this.searchText,
     required this.limitOption,
     required this.ratingOption,
@@ -114,150 +81,7 @@ class Page3History {
   });
 }
 
-class HomeScreen extends StatefulWidget {
-  @override
-  _HomeScreenState createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  List<String> webpUrls = [];
-  List<Map<String, dynamic>> data = [];
-
-  @override
-  void initState() {
-    super.initState();
-    fetchData();
-  }
-
-  Future<void> fetchData() async {
-    final response = await http.get(Uri.parse(
-        'https://api.giphy.com/v1/gifs/trending?api_key=ZjFSjY5rgEywpQ5WUsqJtKQHtAUlzCIx&limit=10'));
-
-    if (response.statusCode == 200) {
-      final apiData = json.decode(response.body)['data'];
-
-      setState(() {
-        data = List<Map<String, dynamic>>.from(apiData);
-        webpUrls = data
-            .map<String>((item) {
-              final originalWebpUrl = item['images']['original']['webp'].toString();
-              return originalWebpUrl;
-            })
-            .toList();
-      });
-    } else {
-      setState(() {
-        webpUrls = ['Failed to load data. Error ${response.statusCode}'];
-      });
-    }
-  }
-
-  void _showImageDialog(String imageUrl, String slug) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          child: Image.network(imageUrl),
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MainLayout(
-      title: 'Home',
-      body: Container(
-        color: Color(0xFF1F2732),
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  SizedBox(height: 16),
-                  Image.asset(
-                    'assets/logo.png',
-                    height: 100,
-                  ),
-                  Center(
-                    child: Text(
-                      'GIF Finder by Alex',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Center(
-                    child: Text(
-                      'Best Place to Find Your Next Favorite GIF.',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Center(
-                    child: Text(
-                      'Enjoy your sneak peek at the 10 most trending GIFs in the USA.',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SliverPadding(
-              padding: EdgeInsets.all(16.0),
-              sliver: SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 8.0,
-                  mainAxisSpacing: 8.0,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (BuildContext context, int index) {
-                    return GestureDetector(
-                      onTap: () {
-                        _showImageDialog(webpUrls[index], data[index]['slug'].toString());
-                      },
-                      child: Container(
-                        color: Colors.white,
-                        child: Stack(
-                          children: [
-                            // Use CachedNetworkImage to load images with a placeholder
-                            CachedNetworkImage(
-                              imageUrl: webpUrls[index],
-                              placeholder: (context, url) => Center(child: CircularProgressIndicator()),
-                              errorWidget: (context, url, error) => Icon(Icons.error),
-                            ),
-                            Positioned(
-                              top: 8.0,
-                              right: 8.0,
-                              child: StarIcon(slug: data[index]['slug'].toString(), imageUrl: webpUrls[index]),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                  childCount: webpUrls.length,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-
-
+//This class is used to set-up Star Icon that is used for favoriting GIF's
 class StarIcon extends StatelessWidget {
   final String slug;
   final String imageUrl;
@@ -266,7 +90,7 @@ class StarIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<Page2Data>(
+    return Consumer<FavoritesPageData>(
       builder: (context, page2Data, _) {
         // Perform a null check on favoritedUrls[slug]
         final bool isStarred = page2Data.favoritedUrls[slug]?.isNotEmpty ?? false;
@@ -300,24 +124,219 @@ class StarIcon extends StatelessWidget {
   }
 }
 
-class Page1 extends StatefulWidget {
-  @override
-  _Page1State createState() => _Page1State();
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initPathProvider();
+  runApp(
+    //setting all the needed providers
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<GIFFinderData>(
+            create: (context) => GIFFinderData(),
+          ),
+          ChangeNotifierProvider<FavoritesPageData>(
+            create: (context) => FavoritesPageData(),
+          ),
+          ChangeNotifierProvider<HistoryPageData>(
+            create: (context) => HistoryPageData(),
+          ),
+        ],
+        child: MyApp(),
+      ),
+    );
 }
 
-class _Page1State extends State<Page1> {
+Future<void> initPathProvider() async {
+  await getTemporaryDirectory();
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      theme: ThemeData(
+        primaryColor: Color(0xFF1D242E),
+        appBarTheme: AppBarTheme(backgroundColor: Color(0xFF1D242E)),
+      ),
+      home: HomePage(),
+    );
+  }
+}
+
+//class that sets the Home Page
+class HomePage extends StatefulWidget {
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  List<String> webpUrls = [];
+  List<Map<String, dynamic>> data = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchData();
+  }
+
+  //fetching data from api
+  Future<void> fetchData() async {
+    final response = await http.get(Uri.parse(
+        'https://api.giphy.com/v1/gifs/trending?api_key=ZjFSjY5rgEywpQ5WUsqJtKQHtAUlzCIx&limit=10'));
+
+    if (response.statusCode == 200) {
+      final apiData = json.decode(response.body)['data'];
+
+      setState(() {
+        //filling data
+        data = List<Map<String, dynamic>>.from(apiData);
+        webpUrls = data
+            .map<String>((item) {
+              final originalWebpUrl = item['images']['original']['webp'].toString();
+              return originalWebpUrl;
+            })
+            .toList();
+      });
+    } else {
+      setState(() {
+        webpUrls = ['Failed to load data. Error ${response.statusCode}'];
+      });
+    }
+  }
+
+  void _showImageDialog(String imageUrl, String slug) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Image.network(imageUrl),
+        );
+      },
+    );
+  }
+
+  //home page layout
+  @override
+  Widget build(BuildContext context) {
+    return MainLayout(
+      title: 'Home',
+      body: Container(
+        color: Color(0xFF1F2732),
+        child: CustomScrollView(
+          //I had an issue with layout when I was trying to have logo on top and gridview under it
+          //Google suggested to use slivers and that solved the error
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  SizedBox(height: 16),
+                  Image.asset(
+                    'assets/logo.png',
+                    height: 100,
+                  ),
+                  //centered texts
+                  Center(
+                    child: Text(
+                      'GIF Finder by Alex',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      'Best Place to Find Your Next Favorite GIF.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      'Enjoy your sneak peek at the 10 most trending GIFs in the USA.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            //SliverGrid is used to have grid layout for trending GIF's
+            SliverPadding(
+              padding: EdgeInsets.all(16.0),
+              sliver: SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 8.0,
+                  mainAxisSpacing: 8.0,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (BuildContext context, int index) {
+                    return GestureDetector(
+                      onTap: () {
+                        //pop-up happens when gif is tapped
+                        _showImageDialog(webpUrls[index], data[index]['slug'].toString());
+                      },
+                      child: Container(
+                        color: Colors.white,
+                        child: Stack(
+                          children: [
+                            //using CachedNetworkImage to load images
+                            CachedNetworkImage(
+                              imageUrl: webpUrls[index],
+                              //spinner that shows progress of gif loading
+                              placeholder: (context, url) => Center(child: CircularProgressIndicator()),
+                              errorWidget: (context, url, error) => Icon(Icons.error),
+                            ),
+                            //star icon appearing in the top right corner that can be used to favorite/unfavorite GIF's
+                            Positioned(
+                              top: 8.0,
+                              right: 8.0,
+                              child: StarIcon(slug: data[index]['slug'].toString(), imageUrl: webpUrls[index]),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  childCount: webpUrls.length,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class GIFFinderPage extends StatefulWidget {
+  @override
+  _GIFFinderPageState createState() => _GIFFinderPageState();
+}
+
+class _GIFFinderPageState extends State<GIFFinderPage> {
+  //setting data for page options
   final List<int> limitOptions = [5, 10, 15, 20];
   final List<String> ratingOptions = ['G', 'PG', 'PG-13', 'R'];
   Future<List<String>>? giphyDataFuture;
   TextEditingController _searchTextController = TextEditingController();
   var offset = 0;
 
+  //getting needed data
   @override
   Widget build(BuildContext context) {
-    Page1Data data = Provider.of<Page1Data>(context);
-    _searchTextController.text = data.searchText;
-    Page3Data page3Data = Provider.of<Page3Data>(context, listen: false);
+    GIFFinderData data = Provider.of<GIFFinderData>(context);
+    _searchTextController.text = data.searchTextData;
+    HistoryPageData page3Data = Provider.of<HistoryPageData>(context, listen: false);
 
+    //border setup
     OutlineInputBorder customBorder = OutlineInputBorder(
       borderRadius: BorderRadius.all(Radius.circular(4.0)),
       borderSide: BorderSide(color: Colors.white, width: 2.0),
@@ -357,7 +376,7 @@ class _Page1State extends State<Page1> {
                     onChanged: (value) {
                       offset = 0;
                       data.updateSearchText(value);
-                    },  
+                    },
                   ),
                   SizedBox(height: 16),
                   Row(
@@ -374,7 +393,7 @@ class _Page1State extends State<Page1> {
                             ),
                             DropdownButton<int>(
                               isExpanded: true,
-                              value: data.limitOption,
+                              value: data.numerOfGifsData,
                               items: limitOptions.map((int value) {
                                 return DropdownMenuItem<int>(
                                   value: value,
@@ -391,7 +410,7 @@ class _Page1State extends State<Page1> {
                                 );
                               }).toList(),
                               onChanged: (int? newValue) {
-                                data.updateLimitOption(newValue!);
+                                data.updateNumberOfGifsData(newValue!);
                               },
                               dropdownColor: Color(0xFF1F2732),
                             ),
@@ -411,7 +430,7 @@ class _Page1State extends State<Page1> {
                             ),
                             DropdownButton<String>(
                               isExpanded: true,
-                              value: data.ratingOption,
+                              value: data.ageRestrictionData,
                               items: ratingOptions.map((String value) {
                                 return DropdownMenuItem<String>(
                                   value: value,
@@ -460,9 +479,9 @@ class _Page1State extends State<Page1> {
                         flex: 2,
                         child: ElevatedButton(
                           onPressed: () async {
-                            if (data.searchText.isNotEmpty) {
+                            if (data.searchTextData.isNotEmpty) {
                               setState(() {
-                                giphyDataFuture = fetchGiphyData(data.searchText, data.limitOption, data.ratingOption);
+                                giphyDataFuture = fetchGiphyData(data.searchTextData, data.numerOfGifsData, data.ageRestrictionData);
                               });
                             }
                           },
@@ -488,6 +507,7 @@ class _Page1State extends State<Page1> {
                   } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return Center(child: Text('No data available'));
                   } else {
+                    // Display the fetched images
                     return Column(
                       children: [
                         Expanded(
@@ -505,18 +525,20 @@ class _Page1State extends State<Page1> {
                                 },
                                 child: Container(
                                   color: Colors.white, // Set the background color of each grid item
-                                  child: Center(
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        CachedNetworkImage(
-                                          imageUrl: snapshot.data![index],
-                                          placeholder: (context, url) => CircularProgressIndicator(),
-                                          errorWidget: (context, url, error) => Icon(Icons.error),
-                                        ),
-                                        // Other widgets in the stack
-                                      ],
-                                    ),
+                                  child: Stack(
+                                    children: [
+                                      CachedNetworkImage(
+                                        imageUrl: snapshot.data![index],
+                                        placeholder: (context, url) => CircularProgressIndicator(),
+                                        errorWidget: (context, url, error) => Icon(Icons.error),
+                                      ),
+                                      Positioned(
+                                        top: 8.0,
+                                        right: 8.0,
+                                        child: StarIcon(slug: snapshot.data![index].toString(), imageUrl: snapshot.data![index]),
+                                      ),
+                                      // Other widgets in the stack
+                                    ],
                                   ),
                                 ),
                               );
@@ -526,8 +548,8 @@ class _Page1State extends State<Page1> {
                         if (snapshot.data!.isNotEmpty) // Show "Get More" button only if there are images
                           ElevatedButton(
                             onPressed: () async {
-                              if (data.searchText.isNotEmpty) {
-                                offset += data.limitOption;
+                              if (data.searchTextData.isNotEmpty) {
+                                offset += data.numerOfGifsData;
                                 setState(() {
                                   giphyDataFuture = fetchGiphyData(data.searchText, data.limitOption, data.ratingOption, offset: offset);
                                 });
@@ -545,7 +567,6 @@ class _Page1State extends State<Page1> {
         ),
       ),
     );
-    
   }
 
   // Function to fetch Giphy data based on the provided parameters
@@ -577,7 +598,9 @@ class _Page1State extends State<Page1> {
       localOffset += webpUrls.length;
     } while (localOffset < offset + limit);
     var list = List<String>.from(webpUrls);
-    Provider.of<Page3Data>(context, listen: false).updateHistory(Page3History(
+    // Create a new Page3History entry with webpUrls
+    // Add the entry to Page3Data
+    Provider.of<HistoryPageData>(context, listen: false).updateHistory(HistoryData(
       searchText: searchText,
       limitOption: limit,
       ratingOption: rating,
@@ -598,7 +621,7 @@ class _Page2State extends State<Page2> {
   Widget build(BuildContext context) {
     return MainLayout(
       title: 'Favorite GIF\'s',
-      body: Consumer<Page2Data>(
+      body: Consumer<FavoritesPageData>(
         builder: (context, page2Data, _) {
           List<String> webpUrls = page2Data.getFavoritedUrls();
           return Container(
@@ -663,7 +686,7 @@ class _Page2State extends State<Page2> {
                   Positioned(
                     top: 8.0,
                     right: 8.0,
-                    child: StarIcon(slug: Provider.of<Page2Data>(context).getSlugForUrl(imageUrl), imageUrl: imageUrl),
+                    child: StarIcon(slug: Provider.of<FavoritesPageData>(context).getSlugForUrl(imageUrl), imageUrl: imageUrl),
                   ),
                 ],
               ),
@@ -715,12 +738,11 @@ class Page3 extends StatelessWidget {
   Widget build(BuildContext context) {
     return MainLayout(
       title: 'Your GIF History',
-      body: Consumer<Page3Data>(
+      body: Consumer<HistoryPageData>(
         builder: (context, page3Data, _) {
           return Container(
             color: Color(0xFF1F2732),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(height: 16),
                 Image.asset(
@@ -835,22 +857,19 @@ class SideMenu extends StatelessWidget {
         child: Column(
           children: <Widget>[
             Container(
-              margin: EdgeInsets.only(top: 10),
-              child: _buildMenuItem('Home', () => _navigateToPage(context, HomeScreen())),
+              margin: EdgeInsets.only(top: 30),
+              child: _buildMenuItem('Home', () => _navigateToPage(context, HomePage())),
             ),
             Divider(color: Colors.black),
             Container(
-              margin: EdgeInsets.only(top: 10),
-              child: _buildMenuItem('GIF Finder', () => _navigateToPage(context, Page1())),
+              child: _buildMenuItem('GIF Finder', () => _navigateToPage(context, GIFFinderPage())),
             ),
             Divider(color: Colors.black),
             Container(
-              margin: EdgeInsets.only(top: 10),
               child: _buildMenuItem('Favorite GIF\'s', () => _navigateToPage(context, Page2())),
             ),
             Divider(color: Colors.black),
             Container(
-              margin: EdgeInsets.only(top: 10),
               child: _buildMenuItem('Your GIF History', () => _navigateToPage(context, Page3())),
             ),
           ],
