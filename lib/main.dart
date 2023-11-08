@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:path_provider/path_provider.dart';
 
 class Page1Data extends ChangeNotifier {
   String searchText = '';
@@ -24,7 +26,10 @@ class Page1Data extends ChangeNotifier {
   }
 }
 
-void main() => runApp(
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initPathProvider();
+  runApp(
       MultiProvider(
         providers: [
           ChangeNotifierProvider<Page1Data>(
@@ -40,7 +45,11 @@ void main() => runApp(
         child: MyApp(),
       ),
     );
+}
 
+Future<void> initPathProvider() async {
+  await getTemporaryDirectory();
+}
 
 class MyApp extends StatelessWidget {
   @override
@@ -218,7 +227,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Colors.white,
                         child: Stack(
                           children: [
-                            Image.network(webpUrls[index]),
+                            // Use CachedNetworkImage to load images with a placeholder
+                            CachedNetworkImage(
+                              imageUrl: webpUrls[index],
+                              placeholder: (context, url) => Center(child: CircularProgressIndicator()),
+                              errorWidget: (context, url, error) => Icon(Icons.error),
+                            ),
                             Positioned(
                               top: 8.0,
                               right: 8.0,
@@ -293,10 +307,12 @@ class _Page1State extends State<Page1> {
   final List<int> limitOptions = [5, 10, 15, 20];
   final List<String> ratingOptions = ['G', 'PG', 'PG-13', 'R'];
   Future<List<String>>? giphyDataFuture;
+  TextEditingController _searchTextController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     Page1Data data = Provider.of<Page1Data>(context);
+    _searchTextController.text = data.searchText;
     Page3Data page3Data = Provider.of<Page3Data>(context, listen: false);
 
     OutlineInputBorder customBorder = OutlineInputBorder(
@@ -321,6 +337,7 @@ class _Page1State extends State<Page1> {
                   ),
                   SizedBox(height: 16),
                   TextFormField(
+                    controller: _searchTextController,
                     decoration: InputDecoration(
                       labelText: 'Search Term',
                       labelStyle: TextStyle(color: Colors.white),
@@ -333,11 +350,10 @@ class _Page1State extends State<Page1> {
                         borderSide: BorderSide(color: Colors.white, width: 2.0),
                       ),
                     ),
-                    initialValue: data.searchText,
                     style: TextStyle(color: Colors.white),
                     onChanged: (value) {
                       data.updateSearchText(value);
-                    },
+                    },  
                   ),
                   SizedBox(height: 16),
                   Row(
@@ -425,6 +441,11 @@ class _Page1State extends State<Page1> {
                         child: ElevatedButton(
                           onPressed: () {
                             // Reset button action
+                            data.updateSearchText(''); // Set search text to empty
+                            _searchTextController.clear();
+                            setState(() {
+                              giphyDataFuture = null; // Clear the future to show no images
+                            });
                           },
                           child: Text('Reset', style: TextStyle(color: Colors.white)),
                         ),
@@ -453,7 +474,9 @@ class _Page1State extends State<Page1> {
               child: FutureBuilder<List<String>>(
                 future: giphyDataFuture,
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
+                  if (giphyDataFuture == null) {
+                    return Center(child: Text('Press "Search" to find GIFs'));
+                  } else if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(child: CircularProgressIndicator());
                   } else if (snapshot.hasError) {
                     return Center(child: Text('Error: ${snapshot.error}'));
